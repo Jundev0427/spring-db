@@ -1,10 +1,10 @@
 package hello.jdbc.repository;
 
-import static org.springframework.jdbc.support.JdbcUtils.closeConnection;
 import static org.springframework.jdbc.support.JdbcUtils.closeResultSet;
 import static org.springframework.jdbc.support.JdbcUtils.closeStatement;
 
 import hello.jdbc.domain.Member;
+import hello.jdbc.repository.ex.MyDbException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -17,16 +17,17 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.datasource.DataSourceUtils;
 
 /**
- * 트랜잭션 - 트랜잭션 매니저 DataSourceUtils.getConnection() DataSourceUtils.releaseConnection()
+ * 예외 누수 문제 해결 체크 예외를 런티임 예외로 변경 MemberRepository 인터페이스 사용 throws SQLException 제거
  */
 
 @Slf4j
 @RequiredArgsConstructor
-public class MemberRepositoryV3{
+public class MemberRepositoryV4_1 implements MemberRepository {
 
     private final DataSource dataSource;
 
-    public Member save(Member member) throws SQLException {
+    @Override
+    public Member save(Member member) {
         String sql = "insert into member(member_id, money) values (?,?)";
         Connection con = null;
         PreparedStatement pstmt = null;
@@ -40,13 +41,14 @@ public class MemberRepositoryV3{
             return member;
         } catch (SQLException e) {
             log.error("db error", e);
-            throw (e);
+            throw new MyDbException(e);
         } finally {
             close(con, pstmt, null);
         }
     }
 
-    public Member findById(String memberId) throws SQLException {
+    @Override
+    public Member findById(String memberId) {
         String sql = "select * from member where member_id = ?";
         Connection con = null;
         PreparedStatement pstmt = null;
@@ -67,13 +69,14 @@ public class MemberRepositoryV3{
             }
         } catch (SQLException e) {
             log.error("db error", e);
-            throw e;
+            throw new MyDbException(e);
         } finally {
             close(con, pstmt, rs);
         }
     }
 
-    public void update(String memberId, int money) throws SQLException {
+    @Override
+    public void update(String memberId, int money) {
         String sql = "update member set money=? where member_id=?";
         Connection con = null;
         PreparedStatement pstmt = null;
@@ -88,14 +91,15 @@ public class MemberRepositoryV3{
 
         } catch (SQLException e) {
             log.error("error", e);
-            throw e;
+            throw new MyDbException(e);
         } finally {
             close(con, pstmt, null);
         }
 
     }
 
-    public void delete(String memberId) throws SQLException {
+    @Override
+    public void delete(String memberId) {
         String sql = "delete from member where member_id=?";
 
         Connection con = null;
@@ -108,7 +112,7 @@ public class MemberRepositoryV3{
             pstmt.executeUpdate();
         } catch (SQLException e) {
             log.error("error", e);
-            throw e;
+            throw new MyDbException(e);
         } finally {
             close(con, pstmt, null);
         }
